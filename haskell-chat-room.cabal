@@ -1,0 +1,89 @@
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.38.1.
+--
+-- see: https://github.com/sol/hpack
+
+name:           haskell-chat-room
+version:        0.1.0.0
+synopsis:       Ứng dụng chat room đa người dùng với truyền file (Haskell)
+category:       Network
+homepage:       https://github.com/your-github-username/haskell-chat-room#readme
+bug-reports:    https://github.com/your-github-username/haskell-chat-room/issues
+author:         Phung Chi Tam & Pham Duy Hoang
+maintainer:     tamphung.31231024593@st.ueh.edu.vn
+license:        MIT
+license-file:   LICENSE
+build-type:     Simple
+extra-source-files:
+    README.md
+
+source-repository head
+  type: git
+  location: https://github.com/your-github-username/haskell-chat-room
+
+library
+  exposed-modules:
+      Lib
+      Protocol
+      State
+  other-modules:
+      Paths_haskell_chat_room
+  hs-source-dirs:
+      src
+  ghc-options: -Wall
+  build-depends:
+      async
+    , base >=4.7 && <5
+    , bytestring
+    , network
+    , stm
+  default-language: Haskell2010
+
+executable client-exe
+  main-is: Main.hs
+  other-modules:
+      Paths_haskell_chat_room
+  hs-source-dirs:
+      app/client
+  ghc-options: -Wall -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      async
+    , base
+    , bytestring
+    , haskell-chat-room
+    , network
+    , stm
+  default-language: Haskell2010
+
+executable server-exe
+  main-is: Main.hs
+  other-modules:
+      Paths_haskell_chat_room
+  hs-source-dirs:
+      app/server
+  ghc-options: -Wall -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      async
+    , base
+    , bytestring
+    , haskell-chat-room
+    , network
+    , stm
+  default-language: Haskell2010
+
+test-suite haskell-chat-room-test
+  type: exitcode-stdio-1.0
+  main-is: Spec.hs
+  other-modules:
+      Paths_haskell_chat_room
+  hs-source-dirs:
+      test
+  ghc-options: -Wall -Wall
+  build-depends:
+      HUnit
+    , base
+    , haskell-chat-room
+    , tasty
+    , tasty-hunit
+  default-language: Haskell2010

@@ -1,0 +1,15 @@
+resolver: lts-22.27   # ⚠️ Dòng này rất quan trọng — chọn GHC ổn định cho Windows
+
+packages:
+- .
+
+# Nếu muốn build nhanh hơn (tùy chọn)
+system-ghc: false
+allow-newer: true
+
+# Nếu gặp lỗi về dependency (hiếm gặp), thêm dòng này:
+# extra-deps: []
+
+# Dành cho runtime multi-thread
+ghc-options:
+  "$everything": -threaded

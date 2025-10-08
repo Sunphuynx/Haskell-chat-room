@@ -1,0 +1,70 @@
+name:                haskell-chat-room
+version:             0.1.0.0
+github:              "your-github-username/haskell-chat-room"
+license:             MIT
+author:              "Phung Chi Tam & Pham Duy Hoang"
+maintainer:          "tamphung.31231024593@st.ueh.edu.vn"
+extra-source-files:  ["README.md"]
+
+# Mô tả project
+synopsis:            Ứng dụng chat room đa người dùng với truyền file (Haskell)
+category:            Network
+
+# Compiler
+ghc-options:
+  - -Wall
+
+# Thư viện chung
+library:
+  source-dirs: src
+  dependencies:
+    - base >= 4.7 && < 5
+    - network
+    - bytestring
+    - stm
+    - async
+
+# Executables
+executables:
+  server-exe:
+    main: Main.hs
+    source-dirs: app/server
+    dependencies:
+      - haskell-chat-room
+      - base
+      - network
+      - bytestring
+      - stm
+      - async
+    ghc-options:
+      - -threaded
+      - -rtsopts
+      - -with-rtsopts=-N
+
+  client-exe:
+    main: Main.hs
+    source-dirs: app/client
+    dependencies:
+      - haskell-chat-room
+      - base
+      - network
+      - bytestring
+      - stm
+      - async
+    ghc-options:
+      - -threaded
+      - -rtsopts
+      - -with-rtsopts=-N
+
+# Test (tuỳ chọn)
+tests:
+  haskell-chat-room-test:
+    main:                Spec.hs
+    source-dirs:         test
+    ghc-options:         -Wall
+    dependencies:
+      - haskell-chat-room
+      - base
+      - HUnit
+      - tasty
+      - tasty-hunit

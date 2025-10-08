@@ -1,0 +1,12 @@
+echo ".stack-work/
+.stack/
+dist/
+*.hi
+*.o
+*.exe
+*.dll
+*.tar.gz
+*.log
+*.swp
+*.swo
+" > .gitignore
