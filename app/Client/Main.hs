@@ -8,7 +8,7 @@ import Control.Exception (SomeException, catch)
 import Control.Monad (forever, void)
 import GHC.IO.Encoding (setLocaleEncoding)
 import Network.Socket
-import qualified Protocol as P -- SỬA Ở ĐÂY: Dùng qualified import
+import qualified Protocol as P
 import System.IO
 
 main :: IO ()
@@ -25,39 +25,38 @@ main = withSocketsDo $ do
 
 session :: Handle -> IO ()
 session handle = do
-  -- Bắt đầu bằng việc yêu cầu người dùng nhập tên
   putStrLn "Nhap ten cua ban:"
   nickname <- getLine
-  -- Gửi tin nhắn Login theo đúng giao thức
   hPutStrLn handle (P.serialize (P.Login nickname))
 
-  -- Luồng lắng nghe tin nhắn từ server
   void . forkIO $ listenLoop `catch` handleServerDisconnect
-  -- Luồng chính để gửi tin nhắn
   sendLoop `catch` handleInputError
   where
     listenLoop = forever $ do
       line <- hGetLine handle
-      case P.parse line of -- SỬA Ở ĐÂY
+      case P.parse line of
         Just msg -> displayMessage msg
         Nothing -> putStrLn " Nhan duoc tin nhan khong the phan tich tu server."
 
     sendLoop = forever $ do
       msg <- getLine
-      -- Gửi tin nhắn công khai theo đúng giao thức
-      hPutStrLn handle (P.serialize (P.PublicMessage msg)) -- SỬA Ở ĐÂY
+      -- TODO: Bổ sung logic để parse lệnh /send, /accept...
+      hPutStrLn handle (P.serialize (P.PublicMessage msg))
 
-    displayMessage :: P.ServerMessage -> IO () -- SỬA Ở ĐÂY
-    displayMessage (P.Broadcast nick msg) = putStrLn $ "[" ++ nick ++ "]: " ++ msg -- SỬA Ở ĐÂY
-    displayMessage (P.UserJoined nick) = putStrLn $ " [" ++ nick ++ "] da tham gia phong chat." -- SỬA Ở ĐÂY
-    displayMessage (P.UserLeft nick) = putStrLn $ " [" ++ nick ++ "] da roi khoi phong chat." -- SỬA Ở ĐÂY
-    displayMessage (P.ServerInfo msg) = putStrLn $ "[Server]: " ++ msg -- SỬA Ở ĐÂY
+    -- SỬA LỖI Ở ĐÂY: Thêm pattern cho FileOffer
+    displayMessage :: P.ServerMessage -> IO ()
+    displayMessage (P.Broadcast nick msg) = putStrLn $ "[" ++ nick ++ "]: " ++ msg
+    displayMessage (P.UserJoined nick) = putStrLn $ " [" ++ nick ++ "] da tham gia phong chat."
+    displayMessage (P.UserLeft nick) = putStrLn $ " [" ++ nick ++ "] da roi khoi phong chat."
+    displayMessage (P.ServerInfo msg) = putStrLn $ "[Server]: " ++ msg
+    displayMessage (P.FileOffer fromNick filepath) = -- <-- DÒNG MỚI ĐƯỢC THÊM VÀO
+      putStrLn $ "[Server]: Nguoi dung '" ++ fromNick ++ "' muon gui cho ban file '" ++ filepath ++ "'. Go '/accept " ++ fromNick ++ "' de dong y."
 
     handleServerDisconnect :: SomeException -> IO ()
     handleServerDisconnect _ = putStrLn "Mat ket noi den server."
 
     handleInputError :: SomeException -> IO ()
-    handleInputError _ = putStrLn "Tam biet!"
+    handleInputError _ = putStrLn "👋 Tạm biệt!"
 
 -- Helper functions
 resolve :: HostName -> ServiceName -> IO AddrInfo
