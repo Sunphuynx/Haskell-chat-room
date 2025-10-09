@@ -9,19 +9,25 @@ import Control.Monad (forever, void)
 import GHC.IO.Encoding (setLocaleEncoding)
 import Network.Socket
 import qualified Protocol as P
+import System.Environment (getArgs) -- Thêm import này
 import System.IO
 
 main :: IO ()
 main = withSocketsDo $ do
   setLocaleEncoding utf8
-  addr <- resolve "127.0.0.1" "3000"
-  sock <- open addr
-  putStrLn "Dang ket noi den server..."
-  connect sock (addrAddress addr)
-  putStrLn "Da ket noi thanh cong."
-  handle <- socketToHandle sock ReadWriteMode
-  hSetBuffering handle LineBuffering
-  session handle
+  -- Đọc địa chỉ và cổng từ dòng lệnh
+  args <- getArgs
+  case args of
+    [host, port] -> do -- Nếu người dùng nhập đủ 2 tham số
+      putStrLn $ "Dang ket noi den " ++ host ++ ":" ++ port ++ "..."
+      addr <- resolve host port
+      sock <- open addr
+      connect sock (addrAddress addr)
+      putStrLn "Da ket noi thanh cong."
+      handle <- socketToHandle sock ReadWriteMode
+      hSetBuffering handle LineBuffering
+      session handle
+    _ -> putStrLn "Loi: Can cung cap dia chi va cong. Vi du: stack exec client-exe -- 0.tcp.ngrok.io 19199" -- Hướng dẫn sử dụng
 
 session :: Handle -> IO ()
 session handle = do
@@ -40,23 +46,21 @@ session handle = do
 
     sendLoop = forever $ do
       msg <- getLine
-      -- TODO: Bổ sung logic để parse lệnh /send, /accept...
       hPutStrLn handle (P.serialize (P.PublicMessage msg))
 
-    -- SỬA LỖI Ở ĐÂY: Thêm pattern cho FileOffer
     displayMessage :: P.ServerMessage -> IO ()
     displayMessage (P.Broadcast nick msg) = putStrLn $ "[" ++ nick ++ "]: " ++ msg
     displayMessage (P.UserJoined nick) = putStrLn $ " [" ++ nick ++ "] da tham gia phong chat."
     displayMessage (P.UserLeft nick) = putStrLn $ " [" ++ nick ++ "] da roi khoi phong chat."
     displayMessage (P.ServerInfo msg) = putStrLn $ "[Server]: " ++ msg
-    displayMessage (P.FileOffer fromNick filepath) = -- <-- DÒNG MỚI ĐƯỢC THÊM VÀO
+    displayMessage (P.FileOffer fromNick filepath) =
       putStrLn $ "[Server]: Nguoi dung '" ++ fromNick ++ "' muon gui cho ban file '" ++ filepath ++ "'. Go '/accept " ++ fromNick ++ "' de dong y."
 
     handleServerDisconnect :: SomeException -> IO ()
     handleServerDisconnect _ = putStrLn "Mat ket noi den server."
 
     handleInputError :: SomeException -> IO ()
-    handleInputError _ = putStrLn "👋 Tạm biệt!"
+    handleInputError _ = putStrLn "Tam biet!"
 
 -- Helper functions
 resolve :: HostName -> ServiceName -> IO AddrInfo
