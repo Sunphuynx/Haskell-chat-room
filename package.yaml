@@ -37,6 +37,7 @@ executables:
       - bytestring
       - stm
       - async
+      - containers
     ghc-options:
       - -threaded
       - -rtsopts
@@ -52,6 +53,7 @@ executables:
       - bytestring
       - stm
       - async
+      - containers
     ghc-options:
       - -threaded
       - -rtsopts
