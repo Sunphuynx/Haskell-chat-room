@@ -52,6 +52,7 @@ executable client-exe
       async
     , base
     , bytestring
+    , containers
     , haskell-chat-room
     , network
     , stm
@@ -68,6 +69,7 @@ executable server-exe
       async
     , base
     , bytestring
+    , containers
     , haskell-chat-room
     , network
     , stm

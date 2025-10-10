@@ -5,11 +5,12 @@ module Main where
 
 import Control.Concurrent (forkIO)
 import Control.Concurrent.STM
-import Control.Exception (SomeException, catch, finally)
-import Control.Monad (forever, void)
-import GHC.IO.Encoding (setLocaleEncoding)
+import Control.Exception (SomeException, bracket, catch)
+import Control.Monad (forever, void, when)
+import qualified Data.Map as Map
+import GHC.IO.Encoding (setLocaleEncoding, utf8)
 import Network.Socket
-import qualified Protocol as P -- SỬA Ở ĐÂY: Dùng qualified import
+import qualified Protocol as P
 import State
 import System.IO
 
@@ -18,59 +19,101 @@ main = withSocketsDo $ do
   setLocaleEncoding utf8
   state <- newServerState
   addr <- resolve "3000"
-  sock <- open addr
-  bind sock (addrAddress addr)
-  listen sock 10
-  putStrLn "Server dang lang nghe tren port 3000..."
-  forever $ do
-    (conn, peer) <- accept sock
-    putStrLn $ "Ket noi moi tu: " ++ show peer
-    void . forkIO $ handleClient conn state
+  bracket (open addr) close $ \sock -> do
+    bind sock (addrAddress addr)
+    listen sock 10
+    putStrLn "OK. Server dang lang nghe tren port 3000..."
+    forever $ do
+      (conn, peer) <- accept sock
+      putStrLn $ "Ket noi moi tu: " ++ show peer
+      void . forkIO $ handleClient conn state
 
 handleClient :: Socket -> ServerState -> IO ()
-handleClient sock state = do
-  handle <- socketToHandle sock ReadWriteMode
-  hSetBuffering handle LineBuffering
-  conversationLoop handle state `finally` hClose handle
+handleClient sock state =
+  bracket (socketToHandle sock ReadWriteMode) hClose $ \handle -> do
+    hSetBuffering handle LineBuffering
+    loginLoop handle state `catch` handleAnyException
+  where
+    handleAnyException :: SomeException -> IO ()
+    handleAnyException _ = return ()
 
-conversationLoop :: Handle -> ServerState -> IO ()
-conversationLoop handle state = do
-  hPutStrLn handle (P.serialize (P.ServerInfo "Chao mung! Vui long nhap ten cua ban."))
+loginLoop :: Handle -> ServerState -> IO ()
+loginLoop handle state = do
+  hPutStrLn handle (P.serialize (P.ServerInfo "Chao mung. Vui long nhap ten cua ban."))
   line <- hGetLine handle
-  case P.parse line of -- SỬA Ở ĐÂY
-    Just (P.Login nick) -> do -- SỬA Ở ĐÂY
+  case P.parse line of
+    Just (P.Login nick) -> do
       success <- atomically $ addClient state nick handle
       if success
         then do
-          broadcast state (P.UserJoined nick) -- SỬA Ở ĐÂY
-          putStrLn $ "+ " ++ nick ++ " da tham gia."
-          talkLoop handle nick state `catch` handleException nick
+          broadcast state (P.UserJoined nick)
+          putStrLn $ "OK. " ++ nick ++ " da tham gia."
+          talkLoop handle nick state `catch` handleDisconnect nick
         else do
-          hPutStrLn handle (P.serialize (P.ServerInfo $ "Ten '" ++ nick ++ "' da duoc su dung. Vui long thu lai.")) -- SỬA Ở ĐÂY
-          hClose handle
-    _ -> hPutStrLn handle (P.serialize (P.ServerInfo "Giao thuc khong hop le. Can gui tin nhan Login truoc.")) -- SỬA Ở ĐÂY
+          hPutStrLn handle (P.serialize (P.ServerInfo $ "Ten '" ++ nick ++ "' da duoc su dung."))
+    _ -> hPutStrLn handle (P.serialize (P.ServerInfo "Giao thuc khong hop le."))
   where
-    handleException :: P.Nickname -> SomeException -> IO ()
-    handleException nick _ = do
-      atomically $ removeClient state nick
-      broadcast state (P.UserLeft nick) -- SỬA Ở ĐÂY
-      putStrLn $ "- " ++ nick ++ " da roi khoi phong chat."
+    handleDisconnect :: P.Nickname -> SomeException -> IO ()
+    handleDisconnect nick _ = do
+      atomically $ do
+        removeClient state nick
+        endTransfer state nick
+      broadcast state (P.UserLeft nick)
+      putStrLn $ "Client " ++ nick ++ " da roi khoi phong chat."
 
 talkLoop :: Handle -> P.Nickname -> ServerState -> IO ()
 talkLoop handle nick state = forever $ do
   line <- hGetLine handle
-  case P.parse line of -- SỬA Ở ĐÂY
-    Just (P.PublicMessage msg) -> do -- SỬA Ở ĐÂY
-      broadcast state (P.Broadcast nick msg) -- SỬA Ở ĐÂY
-    _ -> hPutStrLn handle (P.serialize (P.ServerInfo "Tin nhan khong hop le.")) -- SỬA Ở ĐÂY
+  case P.parse line of
+    Just (P.PublicMessage msg) ->
+      broadcast state (P.Broadcast nick msg)
+
+    Just (P.SendFileRequest recipient filepath) -> do
+      mRecipientHandle <- atomically $ getHandleByNick state recipient
+      case mRecipientHandle of
+        Just recipientHandle -> do
+          hPutStrLn recipientHandle (P.serialize (P.FileOffer nick filepath))
+        Nothing ->
+          hPutStrLn handle (P.serialize (P.ServerInfo $ "Loi: Khong tim thay nguoi dung '" ++ recipient ++ "'."))
+
+    Just (P.FileResponse sender approved) -> do
+      mSenderHandle <- atomically $ getHandleByNick state sender
+      case mSenderHandle of
+        Just senderHandle ->
+          when approved $ do
+            atomically $ startTransfer state sender nick
+            hPutStrLn senderHandle (P.serialize (P.AcceptFile nick))
+        Nothing -> return ()
+
+    Just (P.FileChunk chunk) -> do
+      mRecipientNick <- atomically $ getTransferRecipient state nick
+      case mRecipientNick of
+        Just recipientNick -> forwardTo recipientNick (P.ReceiveFileChunk chunk) -- SUA O DAY
+        Nothing -> return ()
+
+    Just P.EndOfFile -> do
+      mRecipientNick <- atomically $ getTransferRecipient state nick
+      case mRecipientNick of
+        Just recipientNick -> do
+          forwardTo recipientNick P.ReceiveEndOfFile -- SUA O DAY
+          atomically $ endTransfer state nick
+        Nothing -> return ()
+
+    _ -> return ()
+  where
+    forwardTo :: P.Nickname -> P.ServerMessage -> IO ()
+    forwardTo recipientNick msg = do
+      mRecipientHandle <- atomically $ getHandleByNick state recipientNick
+      case mRecipientHandle of
+        Just h -> hPutStrLn h (P.serialize msg) `catch` (\e -> const (return ()) (e :: SomeException))
+        Nothing -> return ()
 
 broadcast :: ServerState -> P.ServerMessage -> IO ()
 broadcast state msg = do
   handles <- atomically $ getAllHandles state
-  let msgStr = P.serialize msg -- SỬA Ở ĐÂY
+  let msgStr = P.serialize msg
   mapM_ (\h -> hPutStrLn h msgStr `catch` (\e -> const (return ()) (e :: SomeException))) handles
 
--- Helper functions (giữ nguyên)
 resolve :: String -> IO AddrInfo
 resolve port = do
   let hints = defaultHints {addrFlags = [AI_PASSIVE], addrSocketType = Stream}
