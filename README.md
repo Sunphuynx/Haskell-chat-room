@@ -1,7 +1,15 @@
-# 💬 Haskell Chat Room
+# 💬 Ứng dụng Chat Room (Web App) bằng Haskell
 
-Ứng dụng **Chat Room** viết bằng **Haskell** sử dụng thư viện `network`, `async`, và `stm`, cho phép client và server giao tiếp qua TCP socket.  
-Dự án được phát triển trong khuôn khổ môn học **Lập Trình Hàm – Cuối kỳ**.
+Đây là dự án cuối kỳ cho môn học Lập Trình Hàm, được xây dựng hoàn toàn bằng Haskell. Dự án là một ứng dụng Web (Web Application) đầy đủ tính năng, sử dụng kiến trúc hiện đại với giao diện HTML/JS và backend Haskell.
+
+Dự án này đáp ứng đầy đủ **7/7 yêu cầu** của đồ án:
+1.  **Sử dụng Haskell:** Toàn bộ backend được viết bằng Haskell.
+2.  **Chat / Truyền file:** Hỗ trợ chat (công khai, riêng tư) và upload/download file (.txt, .jpg, v.v.).
+3.  **Client-Server:** Kiến trúc Web App với Client (Trình duyệt) và Server (Haskell).
+4.  **Parallel:** Xử lý song song tác vụ đếm nguyên âm khi upload file `.txt`.
+5.  **Concurrency:** Xử lý đồng thời nhiều kết nối HTTP và WebSocket.
+6.  **Synchronization:** Sử dụng `STM` (TVar) để quản lý trạng thái server (danh sách user online) một cách an toàn.
+7.  **Socket:** Sử dụng `WebSockets` cho giao tiếp hai chiều theo thời gian thực.
 
 ---
 
@@ -9,105 +17,95 @@ Dự án được phát triển trong khuôn khổ môn học **Lập Trình Hà
 
 | Vai trò | Họ và tên | Nhiệm vụ |
 |----------|------------|----------|
-| **TV1** | **Phạm Duy Hoàng** | Phát triển phần **Server**: quản lý kết nối, gửi/broadcast tin nhắn đến nhiều client |
-| **TV2** | **Phùng Chí Tâm** | Thiết lập dự án, xây dựng **Client** & **Protocol**, kiểm thử và cấu hình hệ thống |
+| **TV1** | **Phạm Duy Hoàng** | Phụ trách Backend (Server), logic Database, Xử lý song song, và Xác thực. |
+| **TV2** | **Phùng Chí Tâm** | Phụ trách Frontend (HTML/CSS/JS), thiết kế Giao thức (Protocol), và tích hợp hệ thống. |
 
 ---
 
-## 🧱 Cấu trúc dự án
+## ✨ Tính năng chính
 
-haskell-chat-room/
+* **Giao diện Web:** Giao diện người dùng hoàn chỉnh bằng HTML/CSS/JS, được chia thành các trang Đăng nhập, Đăng ký, và Phòng chat.
+* **Xác thực Người dùng:**
+    * Đăng ký tài khoản (tên đăng nhập + mật khẩu).
+    * Xác nhận mật khẩu khi đăng ký.
+    * Đăng nhập bằng tài khoản đã tạo.
+* **Bảo mật:** Mật khẩu người dùng được "băm" (hash) an toàn bằng thuật toán **PBKDF2 (SHA256)** trước khi lưu vào database.
+* **Lưu trữ Dữ liệu:**
+    * Sử dụng **SQLite** (`chat.db`) để lưu trữ vĩnh viễn thông tin người dùng và lịch sử tin nhắn.
+    * Tự động tải lịch sử chat cũ khi người dùng vào phòng.
+* **Chat Real-time:**
+    * Sử dụng **WebSockets** để gửi và nhận tin nhắn ngay lập tức.
+    * **Chat Công khai:** Gửi tin nhắn cho tất cả mọi người.
+    * **Chat Riêng tư:** Nhấn vào tên người dùng trong danh sách để gửi tin nhắn riêng.
+    * **Danh sách Online:** Tự động cập nhật danh sách người dùng đang online (và có thể tìm kiếm).
+* **Truyền File:**
+    * Hỗ trợ upload **mọi loại file** (.txt, .jpg, .png, .pdf...) qua HTTP.
+    * File upload được lưu trong thư mục `uploads/` trên server.
+    * Server tự động gửi link tải file vào phòng chat cho mọi người.
+* **Xử lý Song song (Parallel):**
+    * Khi người dùng upload file `.txt`, server sẽ tự động chạy một tác vụ **song song** (parallel) để đếm số lượng nguyên âm trong file đó và thông báo kết quả ra phòng chat.
 
-├── app/
+## 🛠️ Công nghệ sử dụng
 
-│ ├── client/
+| Lĩnh vực | Công nghệ | Mục đích |
+| :--- | :--- | :--- |
+| **Backend** | **Haskell** (GHC 9.6.5) | Ngôn ngữ chính để xây dựng toàn bộ logic server. |
+| | **Stack** | Quản lý build và các thư viện phụ thuộc. |
+| | **Scotty** & **Warp** | Dùng để tạo Web Server (HTTP), xử lý các route API (login, register, upload). |
+| | **WebSockets** | Xử lý giao tiếp hai chiều theo thời gian thực (chat). |
+| | **SQLite-Simple** | Tương tác với database `chat.db` (lưu user, messages). |
+| | **STM (TVar)** | Đồng bộ hóa (Synchronization) trạng thái server (danh sách user online). |
+| | **Cryptonite** | Băm và xác thực mật khẩu người dùng một cách an toàn. |
+| | **Parallel** | Cung cấp các hàm xử lý song song (`parList`, `rseq`). |
+| **Frontend** | **HTML5** | Xây dựng cấu trúc 3 trang: `login.html`, `register.html`, `chat.html`. |
+| | **CSS3** | Tạo kiểu và làm đẹp cho giao diện người dùng. |
+| | **JavaScript (ES6+)** | Xử lý toàn bộ logic phía client (Fetch API, DOM, WebSocket). |
+| **Giao tiếp** | **JSON (Aeson)** | Định dạng dữ liệu chính để giao tiếp giữa JavaScript và server Haskell. |
 
-│ │ └── Main.hs # Code chính của client
+## 🚀 Hướng dẫn Cài đặt & Chạy
+**Yêu cầu:** Cần cài đặt [Stack](https://docs.haskellstack.org/en/stable/install_and_upgrade/) (sẽ tự động cài GHC).
 
-│ └── server/
+**1. Clone dự án:**
+```
+git clone [https://github.com/Sunphuynx/Haskell-chat-room.git]
 
-│ └── Main.hs # Code chính của server
+(https://github.com/Sunphuynx/Haskell-chat-room.git)
 
-├── src/
+cd haskell-chat-room
+```
+**2. Build dự án:** Lần đầu tiên build sẽ mất một lúc để tải và cài đặt các thư viện (Scotty, WebSockets, SQLite...).
+```
+stack build
+```
+**3. Chạy Server:**
 
-│ ├── Protocol.hs # Định nghĩa giao thức (TV2 phụ trách)
+```
+stack exec server-exe
+```
 
-│ ├── State.hs # Quản lý trạng thái server (TV1 phụ trách)
+Bạn sẽ thấy thông báo:
+```
+Khoi dong server tren port 3000...
+Dang chay server tren port 3000...
+```
+**4. Mở ứng dụng:** Mở trình duyệt (Chrome, Firefox,...) và truy cập vào địa chỉ:
 
-│ └── Lib.hs # Các hàm dùng chung
+```
+http://localhost:3000
+```
+Bạn sẽ thấy trang đăng nhập. Hãy tạo một vài tài khoản và mở nhiều tab trình duyệt để bắt đầu chat!
 
-├── package.yaml # Thông tin package, dependency
+## ☁️ Demo qua Internet (với ngrok)
 
-├── stack.yaml # Cấu hình Stack
+Để cho phép bạn bè từ bên ngoài mạng của bạn truy cập vào ứng dụng, bạn có thể sử dụng ngrok.
 
-├── README.md # Tài liệu mô tả dự án
-└── .gitignore
+1. Đảm bảo server của bạn đang chạy (stack exec server-exe).
 
+2. Mở một terminal khác và chạy:
 
----
-
-## ⚙️ Môi trường & Công cụ
-
-- **Ngôn ngữ:** Haskell
-- **Compiler:** GHC 9.6.5
-- **Build tool:** Stack
-- **IDE khuyến nghị:** VS Code + Haskell Language Server
-- **Hệ điều hành:** Windows / Linux đều chạy được
-
----
-
-## 🚀 Hướng dẫn cài đặt & chạy
-
-### 1️⃣ Cài đặt Stack (nếu chưa có)
-👉 [Tải Stack tại đây](https://docs.haskellstack.org/en/stable/install_and_upgrade/)
-
-Kiểm tra sau khi cài:
-bash
-stack --version
-git commit -m "Add project documentation (README)"
-git push
-### 2️⃣ Clone dự án
-git clone https://github.com/Sunphuynx/Haskell-chat-room.git
-cd Haskell-chat-room
-### 3️⃣ Biên dịch dự án
- stack build
-Nếu thấy dòng Successfully built haskell-chat-room-0.1.0.0 → ✅ OK
-### 4️⃣ Chạy chương trình
-🔹 Mở 2 cửa sổ terminal riêng biệt:
-
-Cửa sổ 1 (Server):
- stack exec server-exe
-Cửa sổ 2 (Client):
- stack exec client-exe
-
-### 5️⃣ Kiểm tra hoạt động
-
-Khi client kết nối thành công, bạn sẽ thấy:
- [OK] Da ket noi toi server.
-Gõ tin nhắn bên client:
- xin chao
-Server sẽ hiển thị:
- Client: xin chao
-Và phản hồi về client:
- Nhan duoc: xin chao
-
-## 🧠 Mục tiêu chức năng cuối kỳ
-Chức năng	Mô tả	Trạng thái
-Cấu hình Stack, thư mục chuẩn	Thiết lập môi trường build, biên dịch Haskell	✅
-Client kết nối tới server qua TCP	Gửi và nhận dữ liệu dòng (line-based)	✅
-Server nhận nhiều client (multi-thread)	Dùng forkIO để phục vụ nhiều client song song	⏳
-Module Protocol	Chuẩn hóa định dạng gói tin (TV2 phụ trách)	⏳
-Quản lý danh sách client	Lưu và broadcast tin nhắn (TV1 phụ trách)	⏳
-Giao diện client thân thiện	Hiển thị rõ ràng tên người gửi, nội dung	⏳
-Báo cáo cuối kỳ + README	Tài liệu hướng dẫn sử dụng & phân công	✅
-## 🧩 Hướng phát triển tiếp theo
-
- Hoàn thiện Protocol.hs (định nghĩa cấu trúc tin nhắn)
-
- Bổ sung broadcast đến nhiều client
-
- Thêm xử lý tên người dùng
-
- Ghi log tin nhắn trên server
-
- Giao diện console đẹp hơn (màu sắc, thời gian gửi)
+```
+ngrok http 3000
+```
+3. ngrok sẽ cho bạn một đường link https://... công khai.
+   
+4. Gửi đường link https://... đó cho bạn bè. Họ có thể truy cập, đăng ký và chat với bạn qua trình duyệt của họ.
