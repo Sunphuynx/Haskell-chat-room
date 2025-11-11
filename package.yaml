@@ -6,60 +6,57 @@ author:              "Phung Chi Tam & Pham Duy Hoang"
 maintainer:          "tamphung.31231024593@st.ueh.edu.vn"
 extra-source-files:  ["README.md"]
 
-# Mô tả project
-synopsis:            Ứng dụng chat room đa người dùng với truyền file (Haskell)
+synopsis:            Ung dung chat room da nguoi dung voi truyen file (Haskell)
 category:            Network
 
-# Compiler
-ghc-options:
-  - -Wall
-
-# Thư viện chung
 library:
   source-dirs: src
+  exposed-modules:
+    - Database
+    - Protocol
+    - State
+    - ParallelOps
   dependencies:
     - base >= 4.7 && < 5
-    - network
-    - bytestring
-    - stm
-    - async
     - containers
+    - stm
+    - text
+    - bytestring
+    - aeson
+    - websockets
+    - sqlite-simple
+    - cryptonite
+    - parallel
 
-# Executables
 executables:
   server-exe:
     main: Main.hs
     source-dirs: app/server
-    dependencies:
-      - haskell-chat-room
-      - base
-      - network
-      - bytestring
-      - stm
-      - async
-      - containers
     ghc-options:
       - -threaded
       - -rtsopts
       - -with-rtsopts=-N
-
-  client-exe:
-    main: Main.hs
-    source-dirs: app/client
     dependencies:
       - haskell-chat-room
       - base
-      - network
+      - scotty
+      - warp
+      - wai-websockets
+      - text
       - bytestring
+      - aeson
+      - mtl
+      - wai-cors
       - stm
-      - async
+      - websockets
       - containers
-    ghc-options:
-      - -threaded
-      - -rtsopts
-      - -with-rtsopts=-N
+      - http-types
+      - wai
+      - sqlite-simple
+      - directory
+      - parallel
+      - wai-extra
 
-# Test (tuỳ chọn)
 tests:
   haskell-chat-room-test:
     main:                Spec.hs

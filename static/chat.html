@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Haskell Chat Room</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="chat-container">
+        <div id="sidebar">
+            <h3>Online Users</h3>
+            <input type="text" id="user-search" placeholder="Tìm kiếm người dùng...">
+            <ul id="user-list">
+            </ul>
+        </div>
+        
+        <div id="main-chat">
+            <div id="chat-box-wrapper">
+                <div id="chat-box">
+                </div>
+            </div>
+            
+            <div id="input-area">
+                <div id="chat-target">Đang chat với: <strong>Tất cả mọi người</strong></div>
+                
+                <div id="input-controls">
+                    <input type="file" id="file-input" style="display: none;">
+                    <label for="file-input" id="upload-label-btn" title="Đính kèm file">+</label> 
+                
+                    <input type="text" id="message-input" placeholder="Gõ tin nhắn...">
+                    
+                    <button id="send-btn">Gửi</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="chat.js"></script>
+</body>
+</html>

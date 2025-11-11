@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Haskell Chat Room</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    
+    <div id="app-container">
+        <div id="login-screen">
+            <h2>Haskell Chat</h2>
+            <div id="login-form">
+                <h3>Đăng nhập</h3>
+                <input type="text" id="login-user" placeholder="Tên đăng nhập">
+                <input type="password" id="login-pass" placeholder="Mật khẩu">
+                <button id="login-btn">Vao Chat</button>
+            </div>
+            <hr>
+            <div id="register-form">
+                <h3>Chưa có tài khoản? Đăng ký</h3>
+                <input type="text" id="reg-user" placeholder="Tên đăng nhập">
+                <input type="password" id="reg-pass" placeholder="Mật khẩu">
+                <button id="reg-btn">Đăng ký</button>
+            </div>
+            <p id="auth-error"></p>
+        </div>
+
+        <div id="chat-screen" class="hidden">
+            <div id="chat-box">
+                </div>
+            <div id="input-area">
+                <input type="text" id="message-input" placeholder="Gõ tin nhắn...">
+                <button id="send-btn">Gui</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
