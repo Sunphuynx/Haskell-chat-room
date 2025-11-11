@@ -23,3 +23,14 @@ dist/
 
 # File .cabal được Stack tự động tạo ra
 *.cabal
+
+# --- PHẦN MỚI THÊM ---
+
+# Database
+*.db
+
+# Thư mục chứa file upload
+uploads/
+
+# Các file test cá nhân
+test.txt
