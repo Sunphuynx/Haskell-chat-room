@@ -1,4 +1,4 @@
--- app/server/Main.hs
+-- app/Server/Main.hs
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DeriveGeneric #-}
 

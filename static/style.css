@@ -172,3 +172,18 @@ button:hover {
     flex-grow: 1;
     margin-right: 10px;
 }
+#chat-box .private {
+    color: #4B0082; /* Mau Indigo */
+    background-color: #E6E6FA; /* Mau Lavender nhat */
+    padding: 5px 8px;
+    border-radius: 4px;
+    border-left: 3px solid #4B0082;
+}
+
+#chat-box .private-self {
+    color: #006400; /* Mau DarkGreen */
+    background-color: #F0FFF0; /* Mau Honeydew nhat */
+    padding: 5px 8px;
+    border-radius: 4px;
+    border-left: 3px solid #006400;
+}

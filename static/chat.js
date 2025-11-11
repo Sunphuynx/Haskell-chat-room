@@ -1,4 +1,5 @@
 // static/chat.js
+
 document.addEventListener("DOMContentLoaded", () => {
     // Lay nickname tu localStorage
     const nickname = localStorage.getItem('nickname');
@@ -41,13 +42,19 @@ document.addEventListener("DOMContentLoaded", () => {
             if (msg.tag === 'Broadcast') {
                 addMessageToBox(msg.contents[0], msg.contents[1], 'message');
             } else if (msg.tag === 'ReceivePrivateMessage') {
+                // Tu dong chon vao nguoi gui neu dang khong chat rieng
+                if (chatTarget !== msg.contents[0]) {
+                    // Kich hoat thong bao (vi du)
+                }
                 addMessageToBox(msg.contents[0], `(rieng) ${msg.contents[1]}`, 'private');
             } else if (msg.tag === 'UserJoined') {
                 addMessageToBox(null, `${msg.contents[0]} da tham gia.`, 'info');
             } else if (msg.tag === 'UserLeft') {
                 addMessageToBox(null, `${msg.contents[0]} da roi.`, 'info');
             } else if (msg.tag === 'UserList') {
-                updateUserList(msg.contents[0]);
+                // *** SUA LOI 1 (NGHIEM TRONG) ***
+                // Truyen vao ca danh sach 'msg.contents', khong phai 'msg.contents[0]'
+                updateUserList(msg.contents);
             } else if (msg.tag === 'LoadHistory') {
                 chatBox.innerHTML = '';
                 msg.contents[0].forEach(oldMsg => {
@@ -66,21 +73,31 @@ document.addEventListener("DOMContentLoaded", () => {
         allUsers = users; // Luu lai de tim kiem
         userListElement.innerHTML = ''; // Xoa list cu
         
+        // --- SUA LOI 2 (TRAI NGHIEM NGUOI DUNG) ---
+        // Ham nay se tao mot muc trong danh sach va kiem tra xem
+        // muc do co phai la muc dang duoc chon (chatTarget) hay khong.
+        const createTargetEntry = (targetName, displayName) => {
+            const li = document.createElement('li');
+            li.textContent = displayName;
+            if (chatTarget === targetName) {
+                li.classList.add('active');
+            }
+            li.onclick = () => selectChatTarget(targetName, li);
+            userListElement.appendChild(li);
+        };
+        // -------------------------------------------
+
         // Them nut chat "Tat Ca Moi Nguoi"
-        const publicLi = document.createElement('li');
-        publicLi.textContent = "Tat Ca Moi Nguoi";
-        publicLi.classList.add('active'); // Mac dinh la chon
-        publicLi.onclick = () => selectChatTarget("public", publicLi);
-        userListElement.appendChild(publicLi);
+        createTargetEntry("public", "Tat Ca Moi Nguoi");
 
         // Them tung nguoi dung
         users.forEach(user => {
             if (user === nickname) return; // Khong hien thi ten minh
-            const li = document.createElement('li');
-            li.textContent = user;
-            li.onclick = () => selectChatTarget(user, li);
-            userListElement.appendChild(li);
+            createTargetEntry(user, user); // Ten muc tieu trung ten hien thi
         });
+        
+        // Loc lai danh sach theo thanh tim kiem (neu co)
+        filterUserList();
     }
 
     // Chon muc tieu chat
@@ -97,7 +114,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // Tim kiem nguoi dung
-    userSearch.oninput = () => {
+    const filterUserList = () => {
         const query = userSearch.value.toLowerCase();
         document.querySelectorAll('#user-list li').forEach(li => {
             const isPublic = li.textContent === "Tat Ca Moi Nguoi";
@@ -107,6 +124,8 @@ document.addEventListener("DOMContentLoaded", () => {
             li.style.display = match ? 'block' : 'none';
         });
     };
+    userSearch.oninput = filterUserList;
+
 
     // Gui tin nhan
     function sendMessage() {
@@ -115,9 +134,12 @@ document.addEventListener("DOMContentLoaded", () => {
             let msg = null;
             if (chatTarget === 'public') {
                 msg = { tag: 'SendPublicMessage', contents: content };
+                // Khong can hien thi tin nhan cua chinh minh o day
+                // Server se broadcast lai cho tat ca, bao gom ca minh
             } else {
                 msg = { tag: 'SendPrivateMessage', contents: [chatTarget, content] };
-                addMessageToBox(nickname, `(rieng gui ${chatTarget}) ${content}`, 'private');
+                // Hien thi ngay tin nhan rieng minh gui
+                addMessageToBox(nickname, `(rieng gui ${chatTarget}) ${content}`, 'private-self');
             }
             
             socket.send(JSON.stringify(msg));
@@ -136,9 +158,9 @@ document.addEventListener("DOMContentLoaded", () => {
     // Ham them tin nhan vao giao dien
     function addMessageToBox(sender, content, type) {
         const msgDiv = document.createElement('div');
-        msgDiv.classList.add(type); // 'message', 'info', hoac 'private'
+        msgDiv.classList.add(type); 
 
-        if (type === 'message' || type === 'private') {
+        if (type === 'message' || type === 'private' || type === 'private-self') {
             const senderSpan = document.createElement('span');
             senderSpan.classList.add('sender');
             senderSpan.textContent = `${sender}: `;
@@ -149,7 +171,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
             msgDiv.appendChild(senderSpan);
             msgDiv.appendChild(contentSpan);
-        } else {
+        } else { // 'info'
             msgDiv.textContent = content;
         }
         
