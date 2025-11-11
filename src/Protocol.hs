@@ -1,4 +1,3 @@
--- src/Protocol.hs
 {-# LANGUAGE DeriveGeneric #-}
 
 module Protocol where
@@ -9,23 +8,22 @@ import GHC.Generics (Generic)
 
 type Nickname = Text
 
--- Tin nhan Client gui den Server (qua WebSocket)
 data ClientMessage
   = SendPublicMessage Text
-  | SendPrivateMessage Nickname Text -- Gui tin nhan rieng cho (NguoiNhan) (NoiDung)
+  | SendPrivateMessage Nickname Text
   deriving (Show, Generic)
 
 instance FromJSON ClientMessage
 
--- Tin nhan Server gui den Client (qua WebSocket)
 data ServerMessage
   = Broadcast Nickname Text
-  | ReceivePrivateMessage Nickname Text -- Nhan tin nhan rieng tu (NguoiGui) (NoiDung)
+  | ReceivePrivateMessage Nickname Text
   | UserJoined Nickname
   | UserLeft Nickname
-  | UserList [Nickname] -- Danh sach toan bo user dang online
+  | UserList [Nickname]
   | ServerInfo Text
   | LoadHistory [ServerMessage]
+  | FileBroadcast Nickname Text Text
   deriving (Show, Generic)
 
 instance ToJSON ServerMessage

@@ -1,4 +1,3 @@
-// static/auth.js
 document.addEventListener("DOMContentLoaded", () => {
     const loginBtn = document.getElementById('login-btn');
     const regBtn = document.getElementById('reg-btn');
@@ -8,7 +7,6 @@ document.addEventListener("DOMContentLoaded", () => {
         authError.textContent = message;
     }
 
-    // Xu ly Dang Ky
     if (regBtn) {
         regBtn.onclick = async () => {
             const username = document.getElementById('reg-user').value;
@@ -16,11 +14,11 @@ document.addEventListener("DOMContentLoaded", () => {
             const confirm = document.getElementById('reg-pass-confirm').value;
 
             if (!username || !password || !confirm) {
-                showError("Vui long nhap day du thong tin.");
+                showError("Vui lòng nhập đầy đủ thông tin.");
                 return;
             }
             if (password !== confirm) {
-                showError("Mat khau xac nhan khong khop.");
+                showError("Mật khẩu xác nhận không khớp.");
                 return;
             }
 
@@ -32,25 +30,24 @@ document.addEventListener("DOMContentLoaded", () => {
                 });
 
                 if (response.ok) {
-                    alert("Dang ky thanh cong! Vui long dang nhap.");
-                    window.location.href = "/"; // Chuyen ve trang dang nhap
+                    alert("Đăng ký thành công! Vui lòng chuyển sang trang đăng nhập.");
+                    window.location.href = "/";
                 } else {
                     const err = await response.json();
                     showError(err.message);
                 }
             } catch (e) {
-                showError("Khong the ket noi den server.");
+                showError("Không thể kết nối đến server.");
             }
         };
     }
 
-    // Xu ly Dang Nhap
     if (loginBtn) {
         loginBtn.onclick = async () => {
             const username = document.getElementById('login-user').value;
             const password = document.getElementById('login-pass').value;
             if (!username || !password) {
-                showError("Vui long nhap ten dang nhap va mat khau.");
+                showError("Vui lòng điền tên đăng nhập và mật khẩu.");
                 return;
             }
 
@@ -63,15 +60,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 if (response.ok) {
                     const data = await response.json();
-                    // Luu nickname vao localStorage de trang chat.html co a lay
                     localStorage.setItem('nickname', data.nickname);
-                    window.location.href = "/chat"; // Chuyen den trang chat
+                    window.location.href = "/chat";
                 } else {
                     const err = await response.json();
                     showError(err.message);
                 }
             } catch (e) {
-                showError("Khong the ket noi den server.");
+                showError("Không thể kết nối đến server.");
             }
         };
     }

@@ -19,7 +19,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const username = document.getElementById('reg-user').value;
         const password = document.getElementById('reg-pass').value;
         if (!username || !password) {
-            showError("Vui long nhap day du thong tin dang ky.");
+            showError("Vui lòng nhập đầy đủ thông tin đăng ký.");
             return;
         }
 
@@ -30,7 +30,7 @@ document.addEventListener("DOMContentLoaded", () => {
         });
 
         if (response.ok) {
-            alert("Dang ky thanh cong! Vui long dang nhap.");
+            alert("Đăng ký thành công! Vui lòng chuyển sang trang đăng nhập.");
             showError(""); // Xoa loi
         } else {
             const err = await response.json();
@@ -43,7 +43,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const username = document.getElementById('login-user').value;
         const password = document.getElementById('login-pass').value;
         if (!username || !password) {
-            showError("Vui long nhap ten dang nhap va mat khau.");
+            showError("Vui lòng điền tên đăng nhập và mật khẩu.");
             return;
         }
 
@@ -83,18 +83,18 @@ document.addEventListener("DOMContentLoaded", () => {
         socket = new WebSocket(`${wsProtocol}//${wsHost}/chat`);
 
         socket.onopen = () => {
-            console.log("Da ket noi WebSocket.");
+            console.log("Đã kết nối WebSocket.");
             // TODO: Gui token hoac nickname de xac thuc
             // Vi du: socket.send(JSON.stringify({ type: "auth", token: "..." }));
         };
 
         socket.onclose = () => {
-            addMessageToBox(null, "Da ngat ket noi voi server.", "info");
+            addMessageToBox(null, "Đã ngắt kết nối với server.", "info");
         };
 
         socket.onerror = (err) => {
-            console.error("Loi WebSocket: ", err);
-            addMessageToBox(null, "Loi ket noi.", "info");
+            console.error("Lỗi WebSocket: ", err);
+            addMessageToBox(null, "Lỗi kết nối.", "info");
         };
 
         // Xu ly khi nhan duoc tin nhan tu server
@@ -104,9 +104,9 @@ document.addEventListener("DOMContentLoaded", () => {
             if (msg.tag === 'Broadcast') {
                 addMessageToBox(msg.contents[0], msg.contents[1], 'message');
             } else if (msg.tag === 'UserJoined') {
-                addMessageToBox(null, `${msg.contents[0]} da tham gia phong chat.`, 'info');
+                addMessageToBox(null, `${msg.contents[0]} đã tham gia phòng chat.`, 'info');
             } else if (msg.tag === 'UserLeft') {
-                addMessageToBox(null, `${msg.contents[0]} da roi phong chat.`, 'info');
+                addMessageToBox(null, `${msg.contents[0]} đã rời phòng chat.`, 'info');
             } else if (msg.tag === 'LoadHistory') {
                 msg.contents[0].forEach(oldMsg => {
                     if (oldMsg.tag === 'Broadcast') {

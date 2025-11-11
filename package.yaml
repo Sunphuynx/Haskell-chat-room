@@ -1,4 +1,3 @@
-# package.yaml (PHIÊN BẢN HOÀN CHỈNH ĐÃ SỬA)
 name:                haskell-chat-room
 version:             0.1.0.0
 github:              "your-github-username/haskell-chat-room"
@@ -10,54 +9,54 @@ extra-source-files:  ["README.md"]
 synopsis:            Ung dung chat room da nguoi dung voi truyen file (Haskell)
 category:            Network
 
-# Thư viện chung cho toàn bộ dự án
 library:
   source-dirs: src
-  exposed-modules:  # Chi export nhung module chung ta co
+  exposed-modules:
     - Database
     - Protocol
     - State
+    - ParallelOps
   dependencies:
     - base >= 4.7 && < 5
     - containers
     - stm
     - text
     - bytestring
-    - aeson            # Thu vien JSON
-    - websockets       # Thu vien WebSocket
-    - sqlite-simple  # Thu vien Database
-    - cryptonite       # Thu vien bam mat khau
+    - aeson
+    - websockets
+    - sqlite-simple
+    - cryptonite
+    - parallel
 
-# Server (Chương trình chính)
 executables:
   server-exe:
     main: Main.hs
     source-dirs: app/server
-    ghc-options:       # Chuyen ghc-options vao day
+    ghc-options:
       - -threaded
       - -rtsopts
       - -with-rtsopts=-N
     dependencies:
-      - haskell-chat-room  # Ten du an (de lay code tu src/)
+      - haskell-chat-room
       - base
-      - scotty           # Thu vien Web Server
-      - warp             # May chu Web
-      - wai-websockets   # Ket noi WebSocket voi Scotty
+      - scotty
+      - warp
+      - wai-websockets
       - text
       - bytestring
       - aeson
-      - mtl              # Can thiet cho Scotty
-      - wai-cors         # De tranh loi CORS khi phat trien
+      - mtl
+      - wai-cors
       - stm
       - websockets
       - containers
       - http-types
       - wai
       - sqlite-simple
+      - directory
+      - parallel
+      - wai-extra
 
-# Khong con client-exe nua
-
-# Phan test giu nguyen
 tests:
   haskell-chat-room-test:
     main:                Spec.hs
