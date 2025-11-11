@@ -1,3 +1,4 @@
+# package.yaml (PHIÊN BẢN HOÀN CHỈNH ĐÃ SỬA)
 name:                haskell-chat-room
 version:             0.1.0.0
 github:              "your-github-username/haskell-chat-room"
@@ -6,60 +7,57 @@ author:              "Phung Chi Tam & Pham Duy Hoang"
 maintainer:          "tamphung.31231024593@st.ueh.edu.vn"
 extra-source-files:  ["README.md"]
 
-# Mô tả project
-synopsis:            Ứng dụng chat room đa người dùng với truyền file (Haskell)
+synopsis:            Ung dung chat room da nguoi dung voi truyen file (Haskell)
 category:            Network
 
-# Compiler
-ghc-options:
-  - -Wall
-
-# Thư viện chung
+# Thư viện chung cho toàn bộ dự án
 library:
   source-dirs: src
+  exposed-modules:  # Chi export nhung module chung ta co
+    - Database
+    - Protocol
+    - State
   dependencies:
     - base >= 4.7 && < 5
-    - network
-    - bytestring
-    - stm
-    - async
     - containers
+    - stm
+    - text
+    - bytestring
+    - aeson            # Thu vien JSON
+    - websockets       # Thu vien WebSocket
+    - sqlite-simple  # Thu vien Database
+    - cryptonite       # Thu vien bam mat khau
 
-# Executables
+# Server (Chương trình chính)
 executables:
   server-exe:
     main: Main.hs
     source-dirs: app/server
-    dependencies:
-      - haskell-chat-room
-      - base
-      - network
-      - bytestring
-      - stm
-      - async
-      - containers
-    ghc-options:
+    ghc-options:       # Chuyen ghc-options vao day
       - -threaded
       - -rtsopts
       - -with-rtsopts=-N
-
-  client-exe:
-    main: Main.hs
-    source-dirs: app/client
     dependencies:
-      - haskell-chat-room
+      - haskell-chat-room  # Ten du an (de lay code tu src/)
       - base
-      - network
+      - scotty           # Thu vien Web Server
+      - warp             # May chu Web
+      - wai-websockets   # Ket noi WebSocket voi Scotty
+      - text
       - bytestring
+      - aeson
+      - mtl              # Can thiet cho Scotty
+      - wai-cors         # De tranh loi CORS khi phat trien
       - stm
-      - async
+      - websockets
       - containers
-    ghc-options:
-      - -threaded
-      - -rtsopts
-      - -with-rtsopts=-N
+      - http-types
+      - wai
+      - sqlite-simple
 
-# Test (tuỳ chọn)
+# Khong con client-exe nua
+
+# Phan test giu nguyen
 tests:
   haskell-chat-room-test:
     main:                Spec.hs

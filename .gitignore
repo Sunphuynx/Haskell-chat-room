@@ -1,12 +1,25 @@
-echo ".stack-work/
+# Thư mục build của Stack
+.stack-work/
 .stack/
+
+# Thư mục build cũ
 dist/
+
+# Các file biên dịch tạm của Haskell
 *.hi
 *.o
+
+# Các file thực thi (chương trình chạy)
 *.exe
 *.dll
+
+# Các file nén và log
 *.tar.gz
 *.log
+
+# Các file swap của trình editor (vim)
 *.swp
 *.swo
-" > .gitignore
+
+# File .cabal được Stack tự động tạo ra
+*.cabal

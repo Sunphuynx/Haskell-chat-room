@@ -3,62 +3,51 @@ module State where
 
 import Control.Concurrent.STM
 import qualified Data.Map as Map
-import Protocol (Nickname)
-import System.IO (Handle)
+import Data.Text (Text)
+import Network.WebSockets (Connection)
+import Protocol (Nickname) -- Đảm bảo đã import Protocol
 
--- Luu thong tin client
-type ClientMap = Map.Map Nickname Handle
-
--- Luu trang thai phien truyen file: NguoiGui -> NguoiNhan
-type TransferMap = Map.Map Nickname Nickname
-
--- Kieu du lieu moi cho trang thai cua server
-data ServerState = ServerState
-  { clientState :: TVar ClientMap,
-    transferState :: TVar TransferMap
+-- Thông tin của một client đang kết nối
+data Client = Client
+  { clientConn :: Connection,
+    clientNick :: Nickname
   }
 
--- Ham tao state moi
+-- Kiểu dữ liệu Map để lưu Client
+type ClientMap = Map.Map Nickname Client
+
+-- **ĐÂY LÀ THAY ĐỔI QUAN TRỌNG**
+-- ServerState bây giờ là một 'data' record, có 2 trường (field)
+data ServerState = ServerState
+  { clientState :: TVar ClientMap,      -- Trường để lưu danh sách client
+    transferState :: TVar (Map.Map Nickname Nickname) -- Trường này để dành cho việc gửi file sau
+  }
+
+-- Hàm tạo state mới
 newServerState :: IO ServerState
 newServerState = do
   clients <- newTVarIO Map.empty
   transfers <- newTVarIO Map.empty
-  return $ ServerState clients transfers
+  return $ ServerState clients transfers -- Trả về một record
 
--- Them client moi
-addClient :: ServerState -> Nickname -> Handle -> STM Bool
-addClient state nick handle = do
-  clients <- readTVar (clientState state)
-  if Map.member nick clients
-    then return False
-    else do
-      let newClients = Map.insert nick handle clients
-      writeTVar (clientState state) newClients
-      return True
+-- Thêm client (sử dụng record accessor 'clientState')
+addClient :: ServerState -> Client -> STM ()
+addClient state client =
+  modifyTVar' (clientState state) (Map.insert (clientNick client) client)
 
--- Xoa client
+-- Xóa client
 removeClient :: ServerState -> Nickname -> STM ()
 removeClient state nick =
   modifyTVar' (clientState state) (Map.delete nick)
 
--- Lay tat ca handle
-getAllHandles :: ServerState -> STM [Handle]
-getAllHandles state = Map.elems <$> readTVar (clientState state)
+-- Lấy tất cả client
+getAllClients :: ServerState -> STM [Client]
+getAllClients state = Map.elems <$> readTVar (clientState state)
 
--- Lay handle cua mot nguoi dung cu the
-getHandleByNick :: ServerState -> Nickname -> STM (Maybe Handle)
-getHandleByNick state nick = Map.lookup nick <$> readTVar (clientState state)
+-- Lấy tất cả nickname
+getAllNicknames :: ServerState -> STM [Nickname]
+getAllNicknames state = Map.keys <$> readTVar (clientState state)
 
--- Bat dau mot phien truyen file
-startTransfer :: ServerState -> Nickname -> Nickname -> STM ()
-startTransfer state sender receiver =
-  modifyTVar' (transferState state) (Map.insert sender receiver)
-
--- Ket thuc mot phien truyen file
-endTransfer :: ServerState -> Nickname -> STM ()
-endTransfer state sender =
-  modifyTVar' (transferState state) (Map.delete sender)
-
--- Tim nguoi nhan trong mot phien truyen file
-getTransferRecipient :: ServerState -> Nickname -> STM (Maybe Nickname)
-getTransferRecipient state sender = Map.lookup sender <$> readTVar (transferState state)
+-- Lấy một client theo tên
+getClientByNick :: ServerState -> Nickname -> STM (Maybe Client)
+getClientByNick state nick = Map.lookup nick <$> readTVar (clientState state)

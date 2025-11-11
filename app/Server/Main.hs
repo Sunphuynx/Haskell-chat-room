@@ -1,123 +1,174 @@
--- app/Server/Main.hs
+-- app/server/Main.hs
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE DeriveGeneric #-}
 
 module Main where
 
+import qualified Data.ByteString.Lazy as LBS
 import Control.Concurrent (forkIO)
 import Control.Concurrent.STM
-import Control.Exception (SomeException, bracket, catch)
-import Control.Monad (forever, void, when)
+import Control.Exception (finally, bracket, catch, SomeException)
+import Control.Monad.IO.Class (liftIO)
+import Control.Monad (forever, forM_)
+import qualified Data.Text as T
+import qualified Data.Text.Lazy as TL
+import Data.Aeson (FromJSON, ToJSON, eitherDecode, encode, object, (.=))
+import GHC.Generics (Generic)
 import qualified Data.Map as Map
-import GHC.IO.Encoding (setLocaleEncoding, utf8)
-import Network.Socket
-import qualified Protocol as P
+
+import Web.Scotty
+import Network.HTTP.Types.Status (status200, status400, status401)
+import Network.Wai (Application)
+import Network.Wai.Handler.Warp (run)
+import Network.Wai.Handler.WebSockets (websocketsOr)
+import Network.WebSockets (Connection, ServerApp, PendingConnection, acceptRequest, forkPingThread, receiveData, sendTextData, defaultConnectionOptions)
+import Network.Wai.Middleware.Cors (simpleCors)
+import qualified Database.SQLite.Simple as SQLite
+
+import Database
+import Protocol
 import State
-import System.IO
 
-main :: IO ()
-main = withSocketsDo $ do
-  setLocaleEncoding utf8
-  state <- newServerState
-  addr <- resolve "3000"
-  bracket (open addr) close $ \sock -> do
-    bind sock (addrAddress addr)
-    listen sock 10
-    putStrLn "OK. Server dang lang nghe tren port 3000..."
-    forever $ do
-      (conn, peer) <- accept sock
-      putStrLn $ "Ket noi moi tu: " ++ show peer
-      void . forkIO $ handleClient conn state
+-- Kieu du lieu cho request Dang nhap
+data LoginRequest = LoginRequest
+  { loginUser :: T.Text,
+    loginPass :: T.Text
+  } deriving (Show, Generic)
+instance FromJSON LoginRequest
 
-handleClient :: Socket -> ServerState -> IO ()
-handleClient sock state =
-  bracket (socketToHandle sock ReadWriteMode) hClose $ \handle -> do
-    hSetBuffering handle LineBuffering
-    loginLoop handle state `catch` handleAnyException
-  where
-    handleAnyException :: SomeException -> IO ()
-    handleAnyException _ = return ()
+-- Kieu du lieu cho request Dang ky (CO THEM XAC NHAN)
+data RegisterRequest = RegisterRequest
+  { regUser :: T.Text,
+    regPass :: T.Text,
+    regPassConfirm :: T.Text
+  } deriving (Show, Generic)
+instance FromJSON RegisterRequest
 
-loginLoop :: Handle -> ServerState -> IO ()
-loginLoop handle state = do
-  hPutStrLn handle (P.serialize (P.ServerInfo "Chao mung. Vui long nhap ten cua ban."))
-  line <- hGetLine handle
-  case P.parse line of
-    Just (P.Login nick) -> do
-      success <- atomically $ addClient state nick handle
-      if success
-        then do
-          broadcast state (P.UserJoined nick)
-          putStrLn $ "OK. " ++ nick ++ " da tham gia."
-          talkLoop handle nick state `catch` handleDisconnect nick
-        else do
-          hPutStrLn handle (P.serialize (P.ServerInfo $ "Ten '" ++ nick ++ "' da duoc su dung."))
-    _ -> hPutStrLn handle (P.serialize (P.ServerInfo "Giao thuc khong hop le."))
-  where
-    handleDisconnect :: P.Nickname -> SomeException -> IO ()
-    handleDisconnect nick _ = do
-      atomically $ do
-        removeClient state nick
-        endTransfer state nick
-      broadcast state (P.UserLeft nick)
-      putStrLn $ "Client " ++ nick ++ " da roi khoi phong chat."
+-- Kieu du lieu cho tin nhan xac thuc WebSocket
+data WsAuth = WsAuth { nickname :: Nickname }
+  deriving (Show, Generic)
+instance FromJSON WsAuth
 
-talkLoop :: Handle -> P.Nickname -> ServerState -> IO ()
-talkLoop handle nick state = forever $ do
-  line <- hGetLine handle
-  case P.parse line of
-    Just (P.PublicMessage msg) ->
-      broadcast state (P.Broadcast nick msg)
-
-    Just (P.SendFileRequest recipient filepath) -> do
-      mRecipientHandle <- atomically $ getHandleByNick state recipient
-      case mRecipientHandle of
-        Just recipientHandle -> do
-          hPutStrLn recipientHandle (P.serialize (P.FileOffer nick filepath))
-        Nothing ->
-          hPutStrLn handle (P.serialize (P.ServerInfo $ "Loi: Khong tim thay nguoi dung '" ++ recipient ++ "'."))
-
-    Just (P.FileResponse sender approved) -> do
-      mSenderHandle <- atomically $ getHandleByNick state sender
-      case mSenderHandle of
-        Just senderHandle ->
-          when approved $ do
-            atomically $ startTransfer state sender nick
-            hPutStrLn senderHandle (P.serialize (P.AcceptFile nick))
-        Nothing -> return ()
-
-    Just (P.FileChunk chunk) -> do
-      mRecipientNick <- atomically $ getTransferRecipient state nick
-      case mRecipientNick of
-        Just recipientNick -> forwardTo recipientNick (P.ReceiveFileChunk chunk) -- SUA O DAY
-        Nothing -> return ()
-
-    Just P.EndOfFile -> do
-      mRecipientNick <- atomically $ getTransferRecipient state nick
-      case mRecipientNick of
-        Just recipientNick -> do
-          forwardTo recipientNick P.ReceiveEndOfFile -- SUA O DAY
-          atomically $ endTransfer state nick
-        Nothing -> return ()
-
-    _ -> return ()
-  where
-    forwardTo :: P.Nickname -> P.ServerMessage -> IO ()
-    forwardTo recipientNick msg = do
-      mRecipientHandle <- atomically $ getHandleByNick state recipientNick
-      case mRecipientHandle of
-        Just h -> hPutStrLn h (P.serialize msg) `catch` (\e -> const (return ()) (e :: SomeException))
-        Nothing -> return ()
-
-broadcast :: ServerState -> P.ServerMessage -> IO ()
+-- Ham broadcast (gui tin nhan den tat ca moi nguoi)
+broadcast :: ServerState -> ServerMessage -> IO ()
 broadcast state msg = do
-  handles <- atomically $ getAllHandles state
-  let msgStr = P.serialize msg
-  mapM_ (\h -> hPutStrLn h msgStr `catch` (\e -> const (return ()) (e :: SomeException))) handles
+  clients <- atomically $ getAllClients state
+  let encodedMsg = encode msg
+  forM_ clients $ \(Client conn _) ->
+    sendTextData conn encodedMsg
 
-resolve :: String -> IO AddrInfo
-resolve port = do
-  let hints = defaultHints {addrFlags = [AI_PASSIVE], addrSocketType = Stream}
-  head <$> getAddrInfo (Just hints) Nothing (Just port)
+-- HAM MOI: Gui danh sach user cho tat ca
+broadcastUserList :: ServerState -> IO ()
+broadcastUserList state = do
+  nicks <- atomically $ getAllNicknames state
+  broadcast state (UserList nicks)
 
-open :: AddrInfo -> IO Socket
-open addr = socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr)
+-- HAM MOI: Gui tin nhan rieng
+sendPrivateMessage :: ServerState -> Nickname -> Nickname -> T.Text -> IO ()
+sendPrivateMessage state fromNick toNick content = do
+  mClient <- atomically $ getClientByNick state toNick
+  case mClient of
+    Just (Client conn _) -> sendTextData conn (encode (ReceivePrivateMessage fromNick content))
+    Nothing -> putStrLn $ "Khong tim thay user " ++ T.unpack toNick
+
+-- Ham xu ly logic chat cho tung client
+webSocketApp :: ServerState -> SQLite.Connection -> ServerApp
+webSocketApp state dbConn pending = do
+  conn <- acceptRequest pending
+  forkPingThread conn 30
+
+  mNick <-
+    ( do
+        msg <- receiveData conn :: IO LBS.ByteString
+        case eitherDecode msg of
+          Right (WsAuth nick) -> do
+            isOnline <- atomically $ Map.member nick <$> readTVar (clientState state)
+            if isOnline
+              then do
+                sendTextData conn (encode (ServerInfo "Ten nay da co nguoi dang nhap."))
+                return Nothing
+              else return (Just nick)
+          Left _ -> do
+            sendTextData conn (encode (ServerInfo "Xac thuc that bai."))
+            return Nothing
+    )
+      `catch` (\e -> const (return Nothing) (e :: SomeException))
+
+  case mNick of
+    Nothing -> return ()
+    Just nick -> do
+      let client = Client conn nick
+      atomically $ addClient state client
+      broadcast state (UserJoined nick)
+      broadcastUserList state -- CAP NHAT DANH SACH USER
+      putStrLn $ "Client da ket noi: " ++ T.unpack nick
+
+      history <- getRecentMessages dbConn
+      sendTextData conn (encode (LoadHistory (map (\(Message _ s c) -> Broadcast s c) (reverse history))))
+
+      let loop = forever $ do
+            jsonMsg <- receiveData conn
+            case eitherDecode jsonMsg of
+              Right (SendPublicMessage content) -> do
+                liftIO $ saveMessage dbConn nick content
+                broadcast state (Broadcast nick content)
+              
+              -- LOGIC MOI: Xu ly tin nhan rieng
+              Right (SendPrivateMessage toNick content) -> do
+                sendPrivateMessage state nick toNick content
+
+              _ -> sendTextData conn (encode (ServerInfo "Tin nhan khong hop le"))
+
+      let cleanup = do
+            atomically $ removeClient state nick
+            broadcast state (UserLeft nick)
+            broadcastUserList state -- CAP NHAT DANH SACH USER
+            putStrLn $ "Client da ngat ket noi: " ++ T.unpack nick
+      
+      loop `finally` cleanup
+
+-- Ham main chinh, khoi dong Web Server
+main :: IO ()
+main = do
+  putStrLn "Khoi dong server tren port 3000..."
+  state <- newServerState
+  dbConn <- initDB
+
+  scottyAppInstance <- scottyApp $ do
+    middleware simpleCors
+
+    -- SUA LAI: Trang chu la trang dang nhap
+    get "/" $ file "static/login.html"
+    
+    -- TRANG MOI: Trang dang ky
+    get "/register" $ file "static/register.html"
+
+    -- TRANG MOI: Trang chat (sau khi dang nhap)
+    get "/chat" $ file "static/chat.html"
+    
+    -- Phuc vu cac file tinh khac
+    get "/style.css" $ file "static/style.css"
+    get "/auth.js" $ file "static/auth.js"
+    get "/chat.js" $ file "static/chat.js"
+
+    -- API cho Dang ky (CO KIEM TRA MAT KHAU)
+    post "/register" $ do
+      req <- jsonData :: ActionM RegisterRequest
+      if regPass req /= regPassConfirm req
+        then status status400 >> json ("{ \"status\": \"error\", \"message\": \"Mat khau xac nhan khong khop\" }" :: T.Text)
+        else do
+          success <- liftIO $ createUser dbConn (regUser req) (regPass req)
+          if success
+            then json ("{ \"status\": \"success\" }" :: T.Text)
+            else status status400 >> json ("{ \"status\": \"error\", \"message\": \"Ten da ton tai\" }" :: T.Text)
+
+    -- API cho Dang nhap
+    post "/login" $ do
+      req <- jsonData :: ActionM LoginRequest
+      mNick <- liftIO $ validateUser dbConn (loginUser req) (loginPass req)
+      case mNick of
+        Just nick -> json $ object ["status" .= ("success" :: T.Text), "nickname" .= nick]
+        Nothing -> status status401 >> json ("{ \"status\": \"error\", \"message\": \"Sai ten dang nhap hoac mat khau\" }" :: T.Text)
+    
+  putStrLn "Dang chay server tren port 3000..."
+  run 3000 $ websocketsOr defaultConnectionOptions (webSocketApp state dbConn) scottyAppInstance
