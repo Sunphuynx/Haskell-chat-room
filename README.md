@@ -95,7 +95,7 @@ http://localhost:3000
 ```
 Bạn sẽ thấy trang đăng nhập. Hãy tạo một vài tài khoản và mở nhiều tab trình duyệt để bắt đầu chat!
 
-## ☁️ Demo qua Internet (với ngrok)
+## 🌐 Demo qua Internet (với ngrok)
 
 Để cho phép bạn bè từ bên ngoài mạng của bạn truy cập vào ứng dụng, bạn có thể sử dụng ngrok.
 
@@ -109,3 +109,19 @@ ngrok http 3000
 3. ngrok sẽ cho bạn một đường link https://... công khai.
    
 4. Gửi đường link https://... đó cho bạn bè. Họ có thể truy cập, đăng ký và chat với bạn qua trình duyệt của họ.
+
+## ☁️ Demo Trực tuyến (Triển khai trên Google Cloud)
+
+Phiên bản mới nhất của ứng dụng này đã được triển khai (deploy) thành công lên **Google Cloud Platform (GCP)** bằng dịch vụ Compute Engine.
+
+Bạn có thể truy cập và sử dụng ứng dụng chat ngay lập tức mà không cần cài đặt bất cứ thứ gì thông qua đường dẫn dưới đây:
+
+**➡️ Link Truy cập: [http://35.197.156.188:3000](http://35.197.156.188:3000)**
+
+#### Hướng dẫn truy cập:
+
+1.  Mở trình duyệt (Chrome, Firefox,...) của bạn.
+2.  Truy cập vào địa chỉ: `http://35.197.156.188:3000`
+3.  Bạn sẽ thấy trang đăng nhập. Hãy tạo một tài khoản mới để bắt đầu trải nghiệm.
+
+*Lưu ý: Đây là một máy chủ demo phục vụ cho đồ án, máy chủ có thể được khởi động lại bất cứ lúc nào và dữ liệu (tin nhắn, tài khoản) có thể bị xóa định kỳ. Địa chỉ IP này là địa chỉ IP tạm thời (Ephemeral) của máy ảo.*
