@@ -145,19 +145,19 @@ main = do
     post "/register" $ do
       req <- jsonData :: ActionM RegisterRequest
       if regPass req /= regPassConfirm req
-        then status status400 >> json ("{ \"status\": \"error\", \"message\": \"Mật khẩu xác nhận không khớp\" }" :: T.Text)
+        then status status400 >> json (object ["status" .= ("error" :: T.Text), "message" .= ("Mật khẩu xác nhận không chính xác" :: T.Text)])
         else do
           success <- liftIO $ createUser dbConn (regUser req) (regPass req)
           if success
             then json ("{ \"status\": \"success\" }" :: T.Text)
-            else status status400 >> json ("{ \"status\": \"error\", \"message\": \"Tên đã tồn tại\" }" :: T.Text)
+            else status status400 >> json (object ["status" .= ("error" :: T.Text), "message" .= ("Tên đã tồn tại" :: T.Text)])
 
     post "/login" $ do
       req <- jsonData :: ActionM LoginRequest
       mNick <- liftIO $ validateUser dbConn (loginUser req) (loginPass req)
       case mNick of
         Just nick -> json $ object ["status" .= ("success" :: T.Text), "nickname" .= nick]
-        Nothing -> status status401 >> json ("{ \"status\": \"error\", \"message\": \"Sai tên đăng nhập hoặc mật khẩu\" }" :: T.Text)
+        Nothing -> status status401 >> json (object ["status" .= ("error" :: T.Text), "message" .= ("Sai tên đăng nhập hoặc mật khẩu" :: T.Text)])
     
     post "/upload" $ do
       fs <- files
